@@ -1,0 +1,74 @@
+from keras.models import Sequential
+from keras.layers import Dense, Conv2D, Flatten, Activation, Dropout, Input
+from keras.layers import BatchNormalization
+from keras.callbacks import ReduceLROnPlateau
+import matplotlib.pyplot as plt
+import random
+
+data_X=cicy3['Config. matrix']
+data_y=cicy3['H11']
+
+test_index = random.sample([k for k in range(len(data_X))], round(len(data_X)/10) )#tengo da parte un 10% del dataset
+train_val_index = list(set([k for k in range(len(data_X))]) - set(test_index))
+
+perc = 80 #percentuale di dataset in training set
+
+train = random.sample(train_val_index, round(len(data_X)*(perc/100)))
+val = list(set(train_val_index)-set(train))
+
+data_train_X=np.array([data_X[a] for a in train])
+data_train_y=np.array([data_y[a] for a in train])
+
+data_val_X=np.array([data_X[a] for a in val])
+data_val_y=np.array([data_y[a] for a in val])
+
+data_test_X=np.array([data_X[a] for a in test_index])
+data_test_y=np.array([data_y[a] for a in test_index])
+
+
+network = Sequential()
+network.add(Conv2D(57, kernel_size=(3, 3), activation='relu', data_format="channels_last", input_shape=(12, 15, 1)))
+network.add(BatchNormalization(momentum=0.99))
+network.add(Dropout(0.5))
+
+network.add(Conv2D(56, kernel_size=(3, 3), activation='relu'))
+network.add(BatchNormalization(momentum=0.99))
+network.add(Dropout(0.5))
+
+network.add(Conv2D(55, kernel_size=(3, 3), activation='relu'))
+network.add(BatchNormalization(momentum=0.99))
+network.add(Dropout(0.5))
+
+network.add(Conv2D(43, kernel_size=(3, 3), activation='relu'))
+network.add(BatchNormalization(momentum=0.99))
+network.add(Dropout(0.5))
+
+network.add(Flatten())
+network.add(Dense(169, activation='relu'))
+network.add(BatchNormalization(momentum=0.99))
+network.add(Dropout(0.5))
+
+network.add(Dense(491, activation='sigmoid'))
+network.add(BatchNormalization(momentum=0.99))
+network.add(Dropout(0.5))
+
+network.add(Dense(20, activation = 'softmax'))
+
+reduce_lr = ReduceLROnPlateau(monitor="val_loss", factor=0.3, patience=75)
+
+network.compile(loss='sparse_categorical_crossentropy', optimizer = 'adam',
+                metrics=['accuracy'])
+  
+flat_data_train_X=data_train_X.reshape(len(data_train_X)*12*15)
+data_train_X_s = flat_data_train_X.reshape(len(data_train_X), 12, 15, 1)
+
+flat_data_val_X=data_val_X.reshape(len(data_val_X)*12*15)
+data_val_X_s = flat_data_val_X.reshape(len(data_val_X), 12, 15, 1)
+
+flat_data_test_X=data_test_X.reshape(len(data_test_X)*12*15)
+data_test_X_s = flat_data_test_X.reshape(len(data_test_X), 12, 15, 1)
+
+epochs=1500 
+
+history = network.fit(data_train_X_s, data_train_y, batch_size=32, epochs=epochs, verbose=1, 
+                     validation_data=(data_val_X_s, data_val_y), callbacks = [reduce_lr])
