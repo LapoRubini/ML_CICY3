@@ -1,0 +1,86 @@
+from keras.models import Sequential
+from keras.layers import Dense, Conv2D, Flatten, Activation, Dropout, Input
+from keras.layers import BatchNormalization
+from keras import regularizers
+from keras.layers import Layer
+from keras.callbacks import ReduceLROnPlateau
+import matplotlib.pyplot as plt
+import random
+from sklearn.model_selection import train_test_split
+
+
+
+data_X=cicy3['Config. matrix']
+data_y=cicy3['H11']
+
+test_index = random.sample([k for k in range(len(data_X))], round(len(data_X)/10) )#tengo da parte un 10% del dataset
+train_val_index = list(set([k for k in range(len(data_X))]) - set(test_index))
+
+perc = 80 #percentuale di dataset in training set
+
+train = random.sample(train_val_index, round(len(data_X)*(perc/100)))
+val = list(set(train_val_index)-set(train))
+
+data_train_X=np.array([data_X[a] for a in train])
+data_train_y=np.array([data_y[a] for a in train])
+
+data_val_X=np.array([data_X[a] for a in val])
+data_val_y=np.array([data_y[a] for a in val])
+
+data_test_X=np.array([data_X[a] for a in test_index])
+data_test_y=np.array([data_y[a] for a in test_index])
+
+
+
+#Creazione rete: nell'articolo utilizza anche regolarizzazioni L1 e L2. Non dice dove metterle, 
+# quindi le ho messe in ogni strato e le ho messe per il bias e il kernel.
+
+#Layer 1
+net = Sequential()
+net.add(Conv2D(180, kernel_size =(5,5), padding='same', bias_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-5),
+               kernel_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-5), data_format="channels_last", input_shape=(12, 15, 1)))
+net.add(Activation("relu"))
+net.add(BatchNormalization(momentum=0.99))
+
+#Layer 2
+net.add(Conv2D(100, kernel_size=(5,5), bias_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-5), 
+               kernel_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-5), padding='same'))
+net.add(Activation("relu"))
+net.add(BatchNormalization(momentum=0.99))
+
+#Layer 3
+net.add(Conv2D(40, kernel_size=(5,5), bias_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-5),
+               kernel_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-5), padding='same'))
+net.add(Activation("relu"))
+net.add(BatchNormalization(momentum=0.99))
+
+#Layer 4
+net.add(Conv2D(20, kernel_size=(5,5), bias_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-5),
+               kernel_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-5), padding='same')) 
+net.add(Activation("relu"))
+net.add(BatchNormalization(momentum=0.99))
+net.add(Dropout(0.2))
+
+#Output Layer
+net.add(Flatten())
+net.add(Dense(1, bias_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-5),
+              kernel_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-5)))
+net.add(Activation('relu'))
+
+reduce_lr = ReduceLROnPlateau(monitor="val_loss", factor=0.3, patience=75)
+
+net.compile(loss='mean_squared_error', optimizer = 'adam')
+  
+flat_data_train_X=data_train_X.reshape(len(data_train_X)*12*15)
+data_train_X_s = flat_data_train_X.reshape(len(data_train_X), 12, 15, 1)
+
+flat_data_val_X=data_val_X.reshape(len(data_val_X)*12*15)
+data_val_X_s = flat_data_val_X.reshape(len(data_val_X), 12, 15, 1)
+
+flat_data_test_X=data_test_X.reshape(len(data_test_X)*12*15)
+data_test_X_s = flat_data_test_X.reshape(len(data_test_X), 12, 15, 1)
+
+epochs = 1500
+
+history = net.fit(data_train_X_s, data_train_y, batch_size=32, epochs=epochs, verbose=1, 
+                     validation_data=(data_val_X_s, data_val_y), callbacks=[reduce_lr])
