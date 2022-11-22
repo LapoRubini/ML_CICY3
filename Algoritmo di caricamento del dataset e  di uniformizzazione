@@ -1,0 +1,50 @@
+#NOTA: il dataset va caricato prima di far girare l'algoritmo (si veda il file README)
+
+%cd sample_data
+import numpy as np
+import pandas as pd
+import re
+
+cicy3= pd.DataFrame(columns=['NumPs', 'NumPol', 'Euler', 'H11', 'H21', 'Config. matrix']) 
+matrix=[]
+result=[]
+with open('cicy3list.txt') as file:
+  while True:
+    data = []
+    line=file.readline()
+    if not line:
+      break    #se la linea è vuota (ho letto tutto) esco dal while.
+    if line.startswith("NumPs"):
+      data.append([int(num)for num in line.split() if num.isdigit()][0])
+      line = file.readline()
+      data.append([int(num)for num in line.split() if num.isdigit()][0])
+      line = file.readline()
+      if line.startswith("-",9):
+        val = [int(s) for s in re.findall(r'-?\d+\.?\d*', line)][0]
+        data.append(val)
+      else:
+        data.append([int(num)for num in line.split() if num.isdigit()][0])
+      line = str(file.readline())
+      data.append([int(num)for num in line.split() if num.isdigit()][0])
+      line = str(file.readline())
+      data.append([int(num)for num in line.split() if num.isdigit()][0])
+
+      line=str(file.readline())
+      line=str(file.readline())
+      line=str(file.readline())
+      del(matrix[:])
+      while line.startswith('{'):
+        del(result[:])
+        for digit in [int(a) for a in str(''.join(filter(lambda i: i.isdigit(), line)))]:
+          result.append(int(digit))
+        matrix.append(result[:])
+        line=file.readline()
+      
+      conf = np.array(matrix)
+      zeros = np.zeros((12, 15), dtype=int)
+      for i in range(len(conf)):
+        for j in range(len(conf[0])):
+          zeros[i][j]+=conf[i][j]
+      data.append(zeros)
+      df=pd.DataFrame([data], columns=['NumPs', 'NumPol', 'Euler', 'H11', 'H21', 'Config. matrix'])
+      cicy3=cicy3.append(df, ignore_index = True)
