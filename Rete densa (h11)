@@ -1,0 +1,72 @@
+#Trasformazione degli input in vettori 12*15
+
+data_X=cicy3['Config. matrix']
+data_y=cicy3['H11']
+
+for i in range(len(data_X)):    #trasforma le matrici in vettori di lunghezza 12*15 
+  l=np.zeros(12*15)
+  for j in range(12):
+    for k in range(15):
+      l[j*15+k]+=data_X[i][j][k]
+  data_X[i]=l
+  
+#Creazione del modello
+
+from keras.models import Sequential
+from keras.layers import BatchNormalization
+from keras.layers import Dense, Activation, Dropout, Input
+from keras.callbacks import ReduceLROnPlateau
+import matplotlib.pyplot as plt
+import random
+from sklearn.model_selection import KFold
+
+test_index = random.sample([k for k in range(len(data_X))], round(len(data_X)/10) )#tengo da parte un 10% del dataset
+train_val_index = list(set([k for k in range(len(data_X))]) - set(test_index))
+
+perc = 80 #percentuale di dataset in training set
+
+train = random.sample(train_val_index, round(len(data_X)*(perc/100)))
+val = list(set(train_val_index)-set(train))
+
+data_train_X=np.array([data_X[a] for a in train])
+data_train_y=np.array([data_y[a] for a in train])
+
+data_val_X=np.array([data_X[a] for a in val])
+data_val_y=np.array([data_y[a] for a in val])
+
+data_test_X=np.array([data_X[a] for a in test_index])
+data_test_y=np.array([data_y[a] for a in test_index])
+
+
+network = Sequential()
+network.add(Input(shape= (12*15,)))
+network.add(Dense(876, activation='relu'))
+network.add(BatchNormalization(momentum=0.99))
+network.add(Dropout(0.2072))
+
+network.add(Dense(461, activation='relu'))
+network.add(BatchNormalization(momentum=0.99))
+network.add(Dropout(0.2072))
+
+network.add(Dense(437, activation='relu'))
+network.add(BatchNormalization(momentum=0.99))
+network.add(Dropout(0.2072))
+
+network.add(Dense(929, activation='relu'))
+network.add(BatchNormalization(momentum=0.99))
+network.add(Dropout(0.2072))
+
+network.add(Dense(404, activation='relu'))
+network.add(BatchNormalization(momentum=0.99))
+network.add(Dropout(0.2072))
+
+network.add(Dense(20, activation = 'softmax'))
+
+reduce_lr = ReduceLROnPlateau(monitor="val_loss", factor=0.3, patience=75)
+
+network.compile(loss='sparse_categorical_crossentropy', metrics=['accuracy'], optimizer = 'adam')
+
+epochs=2000
+
+history = network.fit(data_train_X, data_train_y, batch_size=32, epochs=epochs, verbose=1,
+                        validation_data=(data_val_X, data_val_y), callbacks = [reduce_lr]) 
